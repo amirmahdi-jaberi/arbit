@@ -42,6 +42,7 @@ RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1) && \
     rm /tmp/chromedriver.zip && \
     chmod +x /usr/local/bin/chromedriver
 
+    
 # نصب پکیج‌های پایتون
 RUN pip install --upgrade pip
 
