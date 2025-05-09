@@ -37,7 +37,7 @@ def get_excoino_prices(total_pages=5):
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
     # مسیر chromedriver را تنظیم کن
-    chrome_driver_path = ".//chromedriver.exe"
+    chrome_driver_path = "/usr/local/bin/chromedriver"
     driver = webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
     
     # تنظیم user agent
