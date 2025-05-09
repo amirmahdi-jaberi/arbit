@@ -50,6 +50,7 @@ RUN \
   else pip install -r requirements.txt; \
   fi
 
+  
 COPY . /app
 
 RUN rm -rf /app/Dockerfile 
