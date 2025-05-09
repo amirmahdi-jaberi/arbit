@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب Google Chrome نسخه 125.0.6422.60
+# نصب Google Chrome 125.0.6422.60
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && \
@@ -36,13 +36,13 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     rm -rf /var/lib/apt/lists/*
 
 # دانلود ChromeDriver 125.0.6422.60
-RUN wget -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/125.0.6422.60/linux64/chromedriver-linux64.zip" && \
+RUN wget -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/125.0.6422.60/linux64/chromedriver-linux64.zip" && \
     unzip /tmp/chromedriver.zip -d /tmp && \
     mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/ && \
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver*
 
-# بررسی نسخه‌ها (اختیاری)
+# بررسی نسخه‌ها
 RUN echo "Chrome version: $(google-chrome --version)" && \
     echo "ChromeDriver version: $(chromedriver --version)"
 
