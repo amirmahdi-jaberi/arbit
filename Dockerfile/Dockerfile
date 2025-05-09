@@ -4,7 +4,7 @@ ARG USE_MIRROR
 
 WORKDIR /app
 
-# نصب پیش‌نیازهای سیستم
+# نصب پیش‌نیازها
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -28,20 +28,25 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب Google Chrome (نسخه 125)
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list' && \
-    apt-get update && apt-get install -y google-chrome-stable=125.0.6422.60-1 && \
+# نصب Google Chrome نسخه 125.0.6422.60
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+    apt-get update && \
+    apt-get install -y google-chrome-stable=125.0.6422.60-1 && \
     rm -rf /var/lib/apt/lists/*
 
-# دانلود ChromeDriver نسخه 125.0.6422.60
+# دانلود ChromeDriver 125.0.6422.60
 RUN wget -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/125.0.6422.60/linux64/chromedriver-linux64.zip" && \
-    unzip /tmp/chromedriver.zip -d /tmp/ && \
+    unzip /tmp/chromedriver.zip -d /tmp && \
     mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/ && \
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver*
 
-# به‌روزرسانی pip و نصب نیازمندی‌های پایتون
+# بررسی نسخه‌ها (اختیاری)
+RUN echo "Chrome version: $(google-chrome --version)" && \
+    echo "ChromeDriver version: $(chromedriver --version)"
+
+# نصب پکیج‌های پایتون
 RUN pip install --upgrade pip
 
 COPY requirements.txt /app
@@ -53,9 +58,6 @@ RUN if [ "$USE_MIRROR" = "True" ]; then \
     fi
 
 COPY . /app
-
-# حذف فایل‌های غیرضروری
-RUN rm -rf /app/Dockerfile
 
 EXPOSE 3000
 
