@@ -4,7 +4,6 @@ ARG USE_MIRROR
 
 WORKDIR /app
 
-# نصب کتابخانه‌های لازم برای اجرای Chrome headless
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -28,22 +27,20 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب مرورگر گوگل کروم
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+    sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list' && \
     apt-get update && apt-get install -y google-chrome-stable && \
     rm -rf /var/lib/apt/lists/*
 
-# نصب دقیق chromedriver هماهنگ با نسخه کروم
-RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+') && \
-    MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d '.' -f 1) && \
-    DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${MAJOR_VERSION}") && \
+RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1) && \
+    DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}") && \
     wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/${DRIVER_VERSION}/chromedriver_linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip && \
     chmod +x /usr/local/bin/chromedriver
 
-# نصب پکیج‌های پایتون
+RUN google-chrome --version && chromedriver --version
+
 RUN pip install --upgrade pip
 
 COPY requirements.txt /app
@@ -55,7 +52,7 @@ RUN \
 
 COPY . /app
 
-RUN rm -f /app/Dockerfile
+RUN rm -rf /app/Dockerfile 
 
 EXPOSE 3000
 
