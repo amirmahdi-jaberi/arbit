@@ -2,27 +2,10 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-def create_direct_session():
-    """ایجاد یک session مستقیم بدون پروکسی"""
-    session = requests.Session()
-    session.verify = False
-    session.proxies = {}
-    
-    # تنظیم adapter با retry
-    adapter = HTTPAdapter(max_retries=Retry(
-        total=3,
-        backoff_factor=0.5,
-        status_forcelist=[500, 502, 503, 504]
-    ))
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    
-    return session
 
 def get_all_prices():
     url = "https://api.nobitex.ir/market/stats"
-    session = create_direct_session()
-    response = session.post(url)
+    response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
         if data.get("status") == "ok":
