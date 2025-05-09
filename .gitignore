@@ -36,8 +36,7 @@ ENV/
 *.swo
 
 # ChromeDriver
-chromedriver/
-chromedriver.exe
+
 
 # Environment variables
 .env 
