@@ -4,7 +4,6 @@ ARG USE_MIRROR
 
 WORKDIR /app
 
-# نصب پیش‌نیازها
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -28,25 +27,21 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب Google Chrome 125.0.6422.60
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && \
     apt-get install -y google-chrome-stable=125.0.6422.60-1 && \
     rm -rf /var/lib/apt/lists/*
 
-# دانلود ChromeDriver 125.0.6422.60
 RUN wget -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/125.0.6422.60/linux64/chromedriver-linux64.zip" && \
     unzip /tmp/chromedriver.zip -d /tmp && \
     mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/ && \
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver*
 
-# بررسی نسخه‌ها
-RUN echo "Chrome version: $(google-chrome --version)" && \
-    echo "ChromeDriver version: $(chromedriver --version)"
+# نمایش نسخه‌ها
+RUN google-chrome --version && chromedriver --version
 
-# نصب پکیج‌های پایتون
 RUN pip install --upgrade pip
 
 COPY requirements.txt /app
