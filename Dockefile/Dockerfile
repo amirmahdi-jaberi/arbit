@@ -32,6 +32,9 @@ RUN echo "در حال دانلود chromedriver نسخه $CHROME_DRIVER_VERSION 
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf chromedriver-linux64* chromedriver-linux64.zip
 
+# کپی chromedriver به مسیر /usr/bin/
+RUN cp /usr/local/bin/chromedriver /usr/bin/
+
 # چاپ نسخه‌ی نصب شده
 RUN echo "نسخه‌ی نصب شده chromedriver:" && chromedriver --version
 
@@ -46,7 +49,3 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # اجرای ربات
 CMD ["python", "main.py"]
-
-
-
-# تنظیم نسخه‌ی مورد نظر chromedriver
