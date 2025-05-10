@@ -22,12 +22,18 @@ RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.d
     rm google-chrome-stable_current_amd64.deb
 
 # نصب ChromeDriver هماهنگ با نسخه 125
-RUN rm -f /usr/bin/chromedriver1 && \
-    wget https://storage.googleapis.com/chrome-for-testing-public/125.0.6422.60/linux64/chromedriver-linux64.zip && \
+ENV CHROME_DRIVER_VERSION=124.0.6367.91
+
+# نصب chromedriver
+RUN echo "در حال دانلود chromedriver نسخه $CHROME_DRIVER_VERSION ..." && \
+    wget -q https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_DRIVER_VERSION/linux64/chromedriver-linux64.zip && \
     unzip chromedriver-linux64.zip && \
-    mv chromedriver-linux64/chromedriver /usr/bin/chromedriver1 && \
-    chmod +x /usr/bin/chromedriver1 && \
-    rm -rf chromedriver-linux64*
+    mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
+    chmod +x /usr/local/bin/chromedriver && \
+    rm -rf chromedriver-linux64* chromedriver-linux64.zip
+
+# چاپ نسخه‌ی نصب شده
+RUN echo "نسخه‌ی نصب شده chromedriver:" && chromedriver --version
 
 # تنظیم دایرکتوری کاری
 WORKDIR /app
@@ -40,3 +46,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # اجرای ربات
 CMD ["python", "main.py"]
+
+
+
+# تنظیم نسخه‌ی مورد نظر chromedriver
