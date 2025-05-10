@@ -39,12 +39,12 @@ def get_excoino_prices(total_pages=5):
 
     
     # مسیر chromedriver را تنظیم کن
-    chrome_driver_path = "/usr/bin/chromedriver"  # پیدا کردن خودکار مسیر
+    chrome_driver_path = "/usr/local/bin/chromedriver"  # پیدا کردن خودکار مسیر
  
 
     driver = webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
     
-    
+
     # تنظیم user agent
     driver.execute_cdp_cmd('Network.setUserAgentOverride', {
         "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
