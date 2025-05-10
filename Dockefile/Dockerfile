@@ -1,41 +1,49 @@
 FROM python:3.10-slim
 
-# نصب وابستگی‌ها
+# نصب وابستگی‌های مورد نیاز برای Chrome و Chromedriver
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     curl \
     gnupg \
-    fonts-liberation \
     libnss3 \
     libxss1 \
     libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
     libgtk-3-0 \
+    fonts-liberation \
+    xdg-utils \
     libx11-xcb1 \
-    xvfb
+    libxcb-dri3-0 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libgbm1 \
+    libxrandr2 \
+    libxext6 \
+    libxfixes3 \
+    && rm -rf /var/lib/apt/lists/*
 
-# نصب گوگل کروم
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list && \
+# نصب Google Chrome نسخه 114
+RUN wget https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_114.0.5735.90-1_amd64.deb && \
     apt-get update && \
-    apt-get install -y google-chrome-stable
+    apt-get install -y ./google-chrome-stable_114.0.5735.90-1_amd64.deb && \
+    rm google-chrome-stable_114.0.5735.90-1_amd64.deb
 
-# نصب chromedriver نسخه هماهنگ با گوگل کروم
-RUN CHROME_VERSION=$(google-chrome-stable --version | grep -oP '\d+\.\d+\.\d+') && \
-    DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION") && \
-    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip" && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip && \
-    chmod +x /usr/local/bin/chromedriver
+# نصب chromedriver نسخه 114.0.5735.90
+RUN wget https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip && \
+    mv chromedriver /usr/local/bin/chromedriver && \
+    chmod +x /usr/local/bin/chromedriver && \
+    rm chromedriver_linux64.zip
 
-# کپی پروژه
+# تنظیم مسیر کاری
 WORKDIR /app
 COPY . /app
 
 # نصب پکیج‌های پایتون
 RUN pip install --no-cache-dir -r requirements.txt
 
-# اجرای برنامه
+# اجرای پروژه
 CMD ["python", "main.py"]
