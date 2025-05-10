@@ -22,11 +22,11 @@ RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.d
     rm google-chrome-stable_current_amd64.deb
 
 # نصب ChromeDriver هماهنگ با نسخه 125
-RUN rm -f /usr/local/bin/chromedriver && \
+RUN rm -f /usr/bin/chromedriver1 && \
     wget https://storage.googleapis.com/chrome-for-testing-public/125.0.6422.60/linux64/chromedriver-linux64.zip && \
     unzip chromedriver-linux64.zip && \
-    mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
-    chmod +x /usr/local/bin/chromedriver && \
+    mv chromedriver-linux64/chromedriver /usr/bin/chromedriver1 && \
+    chmod +x /usr/bin/chromedriver1 && \
     rm -rf chromedriver-linux64*
 
 # تنظیم دایرکتوری کاری
