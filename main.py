@@ -1,5 +1,5 @@
 from getpricenobitex import get_nobitex_prices
-from new_get_price_ex import get_excoino_prices
+from getpriceexcoino import get_excoino_prices
 from typing import Dict, List, Tuple
 import telebot
 from datetime import datetime
@@ -10,11 +10,9 @@ import os
 # تنظیمات لاگینگ
 def setup_logging():
     """تنظیم سیستم لاگینگ"""
-    # ایجاد پوشه logs اگر وجود نداشته باشد
     if not os.path.exists('logs'):
         os.makedirs('logs')
     
-    # تنظیم فرمت لاگ
     log_format = '%(asctime)s - %(levelname)s - %(message)s'
     logging.basicConfig(
         level=logging.INFO,
@@ -26,14 +24,10 @@ def setup_logging():
     )
     return logging.getLogger(__name__)
 
-# راه‌اندازی لاگر
 logger = setup_logging()
-
-# تنظیمات ربات تلگرام
 BOT_TOKEN = "7873763430:AAHsAclSc_eVULYj6VxcfQuhiVsGWwpt8j8"
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# دریافت قیمت‌های مشترک بین نوبیتکس و اکسیونو
 def get_common_prices() -> Tuple[Dict[str, float], Dict[str, float]]:
     """دریافت قیمت‌های مشترک بین نوبیتکس و اکسیونو"""
     try:
@@ -60,7 +54,6 @@ def get_common_prices() -> Tuple[Dict[str, float], Dict[str, float]]:
         logger.error(f"خطا در دریافت قیمت‌ها: {str(e)}", exc_info=True)
         return {}, {}
 
-# محاسبه درصد اختلاف قیمت‌ها بین دو صرافی
 def calculate_price_differences(nobitex_prices: Dict[str, float], 
                              excoino_prices: Dict[str, float]) -> Dict[str, Dict]:
     """محاسبه درصد اختلاف قیمت‌ها بین دو صرافی"""
@@ -81,87 +74,51 @@ def calculate_price_differences(nobitex_prices: Dict[str, float],
     logger.info(f"تعداد فرصت‌های آربیتراژ یافت شده: {len(differences)}")
     return differences
 
-# دریافت بهترین فرصت‌های آربیتراژ
-def get_top_opportunities(limit: int = 10) -> List[Dict]:
-    """دریافت بهترین فرصت‌های آربیتراژ با تفکیک جهت معامله"""
-    logger.info(f"دریافت {limit} فرصت برتر آربیتراژ...")
+def get_top_opportunities(limit: int = None) -> List[Dict]:
+    """دریافت فرصت‌های آربیتراژ با اختلاف 0 تا 5 درصد"""
+    logger.info("دریافت فرصت‌های آربیتراژ با اختلاف 0 تا 5 درصد...")
     nobitex_prices, excoino_prices = get_common_prices()
     differences = calculate_price_differences(nobitex_prices, excoino_prices)
     
-    # تفکیک فرصت‌های مثبت و منفی
-    positive_opps = {}
-    negative_opps = {}
-    
-    for coin, data in differences.items():
-        if data['اختلاف درصدی'] > 0:
-            positive_opps[coin] = data
-        else:
-            negative_opps[coin] = data
-    
-    # سورت هر گروه به صورت جداگانه
-    sorted_positive = sorted(positive_opps.items(), 
-                           key=lambda x: x[1]['اختلاف درصدی'], 
-                           reverse=True)[:5]
-    
-    sorted_negative = sorted(negative_opps.items(), 
-                           key=lambda x: x[1]['اختلاف درصدی'])[:5]  # صعودی برای بیشترین اختلاف منفی
-
-    combined = sorted_positive + sorted_negative
-    sorted_differences = dict(combined)
-    
     opportunities = []
-    for coin, data in list(sorted_differences.items())[:limit]:
-        opportunities.append({
-            'currency': coin,
-            'nobitex_price': data['نوبیتکس'],
-            'excoino_price': data['اکسیونو'],
-            'difference': data['اختلاف درصدی'],
-            'direction': 'nobitex' if data['اختلاف درصدی'] > 0 else 'excoino'
-        })
+    for coin, data in differences.items():
+        abs_diff = abs(data['اختلاف درصدی'])
+        if 0 <= abs_diff <= 5:
+            opportunities.append({
+                'currency': coin,
+                'nobitex_price': data['نوبیتکس'],
+                'excoino_price': data['اکسیونو'],
+                'difference': abs_diff
+            })
+    
+    opportunities.sort(key=lambda x: x['difference'], reverse=True)
+    
+    if limit:
+        opportunities = opportunities[:limit]
     
     logger.info(f"تعداد فرصت‌های نهایی: {len(opportunities)}")
     return opportunities
 
-# فرمت‌بندی پیام فرصت‌های آربیتراژ
-def format_opportunities_message(opportunities: List[Dict]) -> str:
-    """فرمت‌بندی پیام فرصت‌های آربیتراژ با نمایش دو طرف و ترکیب توابع"""
-    if not opportunities:
-        return "❌ در حال حاضر فرصت آربیتراژی یافت نشد."
-    
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    
-    # تفکیک فرصت‌ها به دو گروه
-    buy_nobitex = [opp for opp in opportunities if opp['direction'] == 'nobitex']
-    buy_excoino = [opp for opp in opportunities if opp['direction'] == 'excoino']
-    
-    # بخش خرید از نوبیتکس
-    message_nobitex = f"🔄 فرصت‌های آربیتراژ \n⏰ {current_time}\n\n"
-    message_nobitex += "🔥 بهترین فرصت‌های خرید از نوبیتکس:\n"
-    for opp in buy_nobitex[:5]:
-        profit = f"{opp['difference']:.2f}%"
-        message_nobitex += (
-            f"💰 {opp['currency']}\n"
-            f"📊 🟢 خرید از نوبیتکس\n"
-            f"💵 قیمت خرید: {opp['nobitex_price']:,.0f}\n"
-            f"💵 قیمت فروش به اکسیونو: {opp['excoino_price']:,.0f}\n"
-            f"📈 سود بالقوه: {profit}\n{'─' * 30}\n"
-        )
-    
-    # بخش خرید از اکسیونو
-    message_excoino = f"🔄 فرصت‌های آربیتراژ \n⏰ {current_time}\n\n"
-    message_excoino += "\n❄️ بهترین فرصت‌های خرید از اکسکوینو:\n"
-    for opp in buy_excoino[:5]:
-        profit = f"{-opp['difference']:.2f}%"
-        message_excoino += (
-            f"💰 {opp['currency']}\n"
-            f"📊 🔵 خرید از اکسیونو\n"
-            f"💵 قیمت خرید: {opp['excoino_price']:,.0f}\n"
-            f"💵 قیمت فروش به نوبیتکس: {opp['nobitex_price']:,.0f}\n"
-            f"📈 سود بالقوه: {profit}\n{'─' * 30}\n"
-        )
+def split_opportunities(opportunities: List[Dict], chunk_size: int = 25) -> List[List[Dict]]:
+    """تقسیم لیست فرصت‌ها به دسته‌های کوچکتر"""
+    return [opportunities[i:i + chunk_size] for i in range(0, len(opportunities), chunk_size)]
 
-    return message_nobitex , message_excoino
+def format_opportunity_message(opportunities: List[Dict], part: int, total_parts: int) -> str:
+    """فرمت‌بندی پیام برای یک دسته از فرصت‌ها"""
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = f"🔄 فرصت‌های آربیتراژ (0-5%)\n⏰ {current_time}\n"
+    message += f"📌 بخش {part} از {total_parts}\n\n"
+    
+    for opp in opportunities:
+        message += (
+            f"💰 {opp['currency']}\n"
+            f"🏦 نوبیتکس: {opp['nobitex_price']:,.0f}\n"
+            f"🏦 اکسکوینو: {opp['excoino_price']:,.0f}\n"
+            f"📊 اختلاف: {opp['difference']:.2f}%\n"
+            f"{'─' * 30}\n"
+        )
+    
+    return message
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -182,8 +139,8 @@ def send_help(message):
     راهنمای استفاده از ربات:
     
     1. برای دریافت فرصت‌های آربیتراژ، دستور /opportunities را ارسال کنید
-    2. ربات 10 فرصت برتر را با اختلاف قیمت بین -10% تا +10% نمایش می‌دهد
-    3. نتایج به ترتیب از کمترین به بیشترین اختلاف مرتب می‌شوند
+    2. ربات فرصت‌ها را با اختلاف قیمت بین 0% تا 5% نمایش می‌دهد
+    3. نتایج به ترتیب از بیشترین به کمترین اختلاف مرتب می‌شوند
     """
     bot.reply_to(message, help_text)
 
@@ -192,27 +149,40 @@ def send_opportunities(message):
     logger.info(f"کاربر {message.from_user.id} درخواست فرصت‌های آربیتراژ کرد")
     try:
         loading_msg = bot.reply_to(message, "⏳ در حال دریافت اطلاعات...")
-        opportunities = get_top_opportunities(10)
+        opportunities = get_top_opportunities()
         
         if not opportunities:
             logger.warning("هیچ فرصت آربیتراژی یافت نشد")
             bot.edit_message_text(
-                "❌ خطا در دریافت اطلاعات. لطفاً دوباره تلاش کنید.",
+                "❌ در حال حاضر فرصت آربیتراژی با اختلاف 0-5% یافت نشد.",
                 chat_id=message.chat.id,
                 message_id=loading_msg.message_id
             )
             return
         
-        message_nobitex , message_excoino = format_opportunities_message(opportunities)
-
-        bot.edit_message_text(
-            message_nobitex,
-            chat_id=message.chat.id,
-            message_id=loading_msg.message_id,
-            parse_mode='HTML'
-        )
-        bot.send_message(message.chat.id, message_excoino, parse_mode='HTML')
-        logger.info("فرصت‌های آربیتراژ با موفقیت ارسال شد")
+        chunks = split_opportunities(opportunities, 25)
+        total_parts = len(chunks)
+        
+        for i, chunk in enumerate(chunks, 1):
+            message_text = format_opportunity_message(chunk, i, total_parts)
+            
+            if i == 1:
+                bot.edit_message_text(
+                    message_text,
+                    chat_id=message.chat.id,
+                    message_id=loading_msg.message_id,
+                    parse_mode='HTML'
+                )
+            else:
+                bot.send_message(
+                    message.chat.id,
+                    message_text,
+                    parse_mode='HTML'
+                )
+            
+            time.sleep(0.5)  # تأخیر کوتاه برای جلوگیری از محدودیت تلگرام
+        
+        logger.info(f"فرصت‌های آربیتراژ در {total_parts} پیام ارسال شد")
         
     except Exception as e:
         logger.error(f"خطا در ارسال فرصت‌های آربیتراژ: {str(e)}", exc_info=True)
@@ -231,7 +201,6 @@ def run_bot():
     logger.info("شروع اجرای ربات...")
     
     try:
-        # تنظیم offset به آخرین پیام دریافتی
         bot.remove_webhook()
         updates = bot.get_updates(offset=-1)
         if updates:
@@ -260,5 +229,3 @@ def run_bot():
 
 if __name__ == "__main__":
     run_bot()
-
-    
