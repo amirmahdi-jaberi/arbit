@@ -1,5 +1,5 @@
 from getpricenobitex import get_nobitex_prices
-from getpriceexcoino import get_excoino_prices
+from new_get_price_ex import get_excoino_prices
 from typing import Dict, List, Tuple
 import telebot
 from datetime import datetime
@@ -30,9 +30,10 @@ def setup_logging():
 logger = setup_logging()
 
 # تنظیمات ربات تلگرام
-BOT_TOKEN = "7571924632:AAEzYHus2yp5jC9JlQXID2A-9NSG5ZnYXlc"
+BOT_TOKEN = "7873763430:AAHsAclSc_eVULYj6VxcfQuhiVsGWwpt8j8"
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# دریافت قیمت‌های مشترک بین نوبیتکس و اکسیونو
 def get_common_prices() -> Tuple[Dict[str, float], Dict[str, float]]:
     """دریافت قیمت‌های مشترک بین نوبیتکس و اکسیونو"""
     try:
@@ -41,7 +42,7 @@ def get_common_prices() -> Tuple[Dict[str, float], Dict[str, float]]:
         logger.info(f"تعداد ارزهای دریافت شده از نوبیتکس: {len(nob_pri)}")
         
         logger.info("دریافت قیمت‌ها از اکسیونو...")
-        exc_pri = get_excoino_prices(total_pages=38)
+        exc_pri = get_excoino_prices()
         logger.info(f"تعداد ارزهای دریافت شده از اکسیونو: {len(exc_pri)}")
         
         common_keys = set(nob_pri.keys()) & set(exc_pri.keys())
@@ -59,6 +60,7 @@ def get_common_prices() -> Tuple[Dict[str, float], Dict[str, float]]:
         logger.error(f"خطا در دریافت قیمت‌ها: {str(e)}", exc_info=True)
         return {}, {}
 
+# محاسبه درصد اختلاف قیمت‌ها بین دو صرافی
 def calculate_price_differences(nobitex_prices: Dict[str, float], 
                              excoino_prices: Dict[str, float]) -> Dict[str, Dict]:
     """محاسبه درصد اختلاف قیمت‌ها بین دو صرافی"""
@@ -69,7 +71,7 @@ def calculate_price_differences(nobitex_prices: Dict[str, float],
         
         diff_percentage = ((excoino_price - nobitex_price) / nobitex_price) * 100
         
-        if -10 <= diff_percentage <= 10:
+        if -20 <= diff_percentage <= 20:
             differences[coin] = {
                 'نوبیتکس': nobitex_price,
                 'اکسیونو': excoino_price,
@@ -79,14 +81,33 @@ def calculate_price_differences(nobitex_prices: Dict[str, float],
     logger.info(f"تعداد فرصت‌های آربیتراژ یافت شده: {len(differences)}")
     return differences
 
+# دریافت بهترین فرصت‌های آربیتراژ
 def get_top_opportunities(limit: int = 10) -> List[Dict]:
-    """دریافت بهترین فرصت‌های آربیتراژ"""
+    """دریافت بهترین فرصت‌های آربیتراژ با تفکیک جهت معامله"""
     logger.info(f"دریافت {limit} فرصت برتر آربیتراژ...")
     nobitex_prices, excoino_prices = get_common_prices()
     differences = calculate_price_differences(nobitex_prices, excoino_prices)
     
-    sorted_differences = dict(sorted(differences.items(), 
-                                   key=lambda x: x[1]['اختلاف درصدی']))
+    # تفکیک فرصت‌های مثبت و منفی
+    positive_opps = {}
+    negative_opps = {}
+    
+    for coin, data in differences.items():
+        if data['اختلاف درصدی'] > 0:
+            positive_opps[coin] = data
+        else:
+            negative_opps[coin] = data
+    
+    # سورت هر گروه به صورت جداگانه
+    sorted_positive = sorted(positive_opps.items(), 
+                           key=lambda x: x[1]['اختلاف درصدی'], 
+                           reverse=True)[:5]
+    
+    sorted_negative = sorted(negative_opps.items(), 
+                           key=lambda x: x[1]['اختلاف درصدی'])[:5]  # صعودی برای بیشترین اختلاف منفی
+
+    combined = sorted_positive + sorted_negative
+    sorted_differences = dict(combined)
     
     opportunities = []
     for coin, data in list(sorted_differences.items())[:limit]:
@@ -94,40 +115,53 @@ def get_top_opportunities(limit: int = 10) -> List[Dict]:
             'currency': coin,
             'nobitex_price': data['نوبیتکس'],
             'excoino_price': data['اکسیونو'],
-            'difference': data['اختلاف درصدی']
+            'difference': data['اختلاف درصدی'],
+            'direction': 'nobitex' if data['اختلاف درصدی'] > 0 else 'excoino'
         })
     
     logger.info(f"تعداد فرصت‌های نهایی: {len(opportunities)}")
     return opportunities
 
+# فرمت‌بندی پیام فرصت‌های آربیتراژ
 def format_opportunities_message(opportunities: List[Dict]) -> str:
-    """فرمت‌بندی پیام فرصت‌های آربیتراژ"""
+    """فرمت‌بندی پیام فرصت‌های آربیتراژ با نمایش دو طرف و ترکیب توابع"""
     if not opportunities:
         return "❌ در حال حاضر فرصت آربیتراژی یافت نشد."
     
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    message = f"🔄 فرصت‌های آربیتراژ\n"
-    message += f"⏰ {current_time}\n\n"
     
-    sorted_opps = sorted(opportunities, key=lambda x: abs(x['difference']), reverse=True)
+    # تفکیک فرصت‌ها به دو گروه
+    buy_nobitex = [opp for opp in opportunities if opp['direction'] == 'nobitex']
+    buy_excoino = [opp for opp in opportunities if opp['direction'] == 'excoino']
     
-    for opp in sorted_opps:
-        direction = "🟢 خرید از اکسکوینو"
+    # بخش خرید از نوبیتکس
+    message_nobitex = f"🔄 فرصت‌های آربیتراژ \n⏰ {current_time}\n\n"
+    message_nobitex += "🔥 بهترین فرصت‌های خرید از نوبیتکس:\n"
+    for opp in buy_nobitex[:5]:
         profit = f"{opp['difference']:.2f}%"
-        nobitex_price = f"{opp['nobitex_price']:,.0f}"
-        excoino_price = f"{opp['excoino_price']:,.0f}"
-        
-        message += (
+        message_nobitex += (
             f"💰 {opp['currency']}\n"
-            f"📊 {direction}\n"
-            f"💵 قیمت خرید از اکسکوینو: {excoino_price}\n"
-            f"💵 قیمت فروش به نوبیتکس: {nobitex_price}\n"
-            f"📈 اختلاف: {profit}\n"
-            f"{'─' * 30}\n"
+            f"📊 🟢 خرید از نوبیتکس\n"
+            f"💵 قیمت خرید: {opp['nobitex_price']:,.0f}\n"
+            f"💵 قیمت فروش به اکسیونو: {opp['excoino_price']:,.0f}\n"
+            f"📈 سود بالقوه: {profit}\n{'─' * 30}\n"
         )
     
-    return message
+    # بخش خرید از اکسیونو
+    message_excoino = f"🔄 فرصت‌های آربیتراژ \n⏰ {current_time}\n\n"
+    message_excoino += "\n❄️ بهترین فرصت‌های خرید از اکسکوینو:\n"
+    for opp in buy_excoino[:5]:
+        profit = f"{-opp['difference']:.2f}%"
+        message_excoino += (
+            f"💰 {opp['currency']}\n"
+            f"📊 🔵 خرید از اکسیونو\n"
+            f"💵 قیمت خرید: {opp['excoino_price']:,.0f}\n"
+            f"💵 قیمت فروش به نوبیتکس: {opp['nobitex_price']:,.0f}\n"
+            f"📈 سود بالقوه: {profit}\n{'─' * 30}\n"
+        )
+
+    return message_nobitex , message_excoino
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -158,7 +192,7 @@ def send_opportunities(message):
     logger.info(f"کاربر {message.from_user.id} درخواست فرصت‌های آربیتراژ کرد")
     try:
         loading_msg = bot.reply_to(message, "⏳ در حال دریافت اطلاعات...")
-        opportunities = get_top_opportunities(5)
+        opportunities = get_top_opportunities(10)
         
         if not opportunities:
             logger.warning("هیچ فرصت آربیتراژی یافت نشد")
@@ -169,13 +203,15 @@ def send_opportunities(message):
             )
             return
         
-        message_text = format_opportunities_message(opportunities)
+        message_nobitex , message_excoino = format_opportunities_message(opportunities)
+
         bot.edit_message_text(
-            message_text,
+            message_nobitex,
             chat_id=message.chat.id,
             message_id=loading_msg.message_id,
             parse_mode='HTML'
         )
+        bot.send_message(message.chat.id, message_excoino, parse_mode='HTML')
         logger.info("فرصت‌های آربیتراژ با موفقیت ارسال شد")
         
     except Exception as e:

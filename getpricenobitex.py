@@ -1,11 +1,12 @@
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
+import urllib3
 
 def get_all_prices():
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     url = "https://api.nobitex.ir/market/stats"
-    response = requests.get(url)
+    response = requests.get(url, verify=False)
     if response.status_code == 200:
         data = response.json()
         if data.get("status") == "ok":
@@ -16,11 +17,12 @@ def get_all_prices():
                 # فقط جفت ارزهای ریال را در نظر بگیر
                 if symbol.endswith('-rls') and not info.get("isClosed", False):
                     best_buy = float(info.get("bestBuy", 0))
+                    best_sell = float(info.get("bestSell", 0))
                     if best_buy > 0:
                         # تبدیل فرمت نام از btc-rls به BTC/IRR
                         new_symbol = symbol.replace('-rls', '').upper()
-                        currency_bidPrice[new_symbol] = best_buy
-            
+                        last_price = (best_buy+best_sell)/2
+                        currency_bidPrice[new_symbol] = last_price
             return currency_bidPrice
         else:
             print("خطا در دریافت اطلاعات: وضعیت ناموفق")
@@ -47,4 +49,4 @@ def get_nobitex_prices():
 # مثال استفاده از تابع
 if __name__ == "__main__":
     prices = get_nobitex_prices()
-    print(prices.keys())
+    print(prices)
