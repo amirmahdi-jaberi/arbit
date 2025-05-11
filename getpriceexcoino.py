@@ -30,7 +30,7 @@ def get_excoino_prices():
     chrome_options.add_experimental_option('useAutomationExtension', False)
 
     # مسیر chromedriver را تنظیم کن
-    chrome_driver_path = "/usr/local/bin/chromedriver" 
+    chrome_driver_path = "/usr/bin/chromedriver" 
 
     driver = webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
     
