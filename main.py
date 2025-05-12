@@ -1,5 +1,5 @@
-from getpricenobitex import g_n_p as a
-from getpriceexcoino import g_e_p as b
+from getpricenobitex import y1 as a
+from getpriceexcoino import a1 as b
 from typing import Dict, List, Tuple
 import telebot
 from datetime import datetime as c
