@@ -4,61 +4,47 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import time
 
-def get_excoino_prices():
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--ignore-ssl-errors')
-    chrome_options.add_argument('--disable-web-security')
-    chrome_options.add_argument('--allow-running-insecure-content')
-    chrome_options.add_argument('--proxy-server="direct://"')
-    chrome_options.add_argument('--proxy-bypass-list=*')
-    chrome_options.add_argument('--disable-extensions')
-    chrome_options.add_argument('--disable-popup-blocking')
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-
-    chrome_driver_path = "/usr/bin/chromedriver"
-
-    driver = webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
-    
-    driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+def a1():
+    b1 = Options()
+    b1.add_argument('--headless')
+    b1.add_argument('--disable-gpu')
+    b1.add_argument('--no-sandbox')
+    b1.add_argument('--disable-dev-shm-usage')
+    b1.add_argument('--ignore-certificate-errors')
+    b1.add_argument('--ignore-ssl-errors')
+    b1.add_argument('--disable-web-security')
+    b1.add_argument('--allow-running-insecure-content')
+    b1.add_argument('--proxy-server="direct://"')
+    b1.add_argument('--proxy-bypass-list=*')
+    b1.add_argument('--disable-extensions')
+    b1.add_argument('--disable-popup-blocking')
+    b1.add_argument('--disable-blink-features=AutomationControlled')
+    b1.add_experimental_option('excludeSwitches', ['enable-automation'])
+    b1.add_experimental_option('useAutomationExtension', False)
+    c1 = "/usr/bin/chromedriver"
+    d1 = webdriver.Chrome(service=Service(c1), options=b1)
+    d1.execute_cdp_cmd('Network.setUserAgentOverride', {
         "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     })
-
     try:
-        driver.get("https://www.excoino.com/market/exchange/xrp_irr")
-        driver.set_window_size(1920, 1080)
+        d1.get("https://www.excoino.com/market/exchange/xrp_irr")
+        d1.set_window_size(1920, 1080)
         time.sleep(5)
-
-        prices_dict = {}
-        
-        rows = driver.find_elements(By.CSS_SELECTOR, "tbody.ivu-table-tbody tr.ivu-table-row")
-        
-        n=1
-        for row in rows:
+        e1 = {}
+        f1 = d1.find_elements(By.CSS_SELECTOR, "tbody.ivu-table-tbody tr.ivu-table-row")
+        g1 = 1
+        for h1 in f1:
             try:
-                cells = row.find_elements(By.TAG_NAME, "td")
-                if len(cells) >= 3:
-                    name = cells[0].text.strip()
-                    price = cells[1].text.strip()
-                    prices_dict[name] = float(price.replace(',', ''))
-                    n+=1
-                    if n==450:
-                        break
-            except Exception as e:
-                print(f"Error processing row: {e}")
-
-        return prices_dict
-
-    finally:
-        driver.quit()
+                i1 = h1.find_elements(By.TAG_NAME, "td")
+                if len(i1) >= 3:
+                    j1 = i1[0].text.strip()
+                    k1 = i1[1].text.strip()
+                    e1[j1] = float(k1.replace(',', ''))
+                    g1 += 1
+                    if g1 == 450: break
+            except Exception: pass
+        return e1
+    finally: d1.quit()
 
 if __name__ == "__main__":
-    prices = get_excoino_prices()
-    print(len(prices))
-    print(prices['BTCB'])
+    l1 = a1()
