@@ -1,36 +1,44 @@
-import requests as rq
-from requests.adapters import HTTPAdapter as Adp
-from urllib3.util.retry import Retry as Rty
-import urllib3 as ulb
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import urllib3
 
-def y1():
-    ulb.disable_warnings(ulb.exceptions.InsecureRequestWarning)
-    u = "https://api.nobitex.ir/market/stats"
-    rs = rq.get(u, verify=False)
-    if rs.status_code == 200:
-        dt = rs.json()
-        if dt.get("status") == "ok":
-            st = dt.get("stats", {})
-            pr = {}
-            for s, i in st.items():
-                if s.endswith('-rls') and not i.get("isClosed", False):
-                    b = float(i.get("bestBuy", 0))
-                    s = float(i.get("bestSell", 0))
-                    if b > 0:
-                        ns = s.replace('-rls', '').upper()
-                        lp = (b + s) / 2
-                        pr[ns] = lp
-            return pr
-    return None
+def get_all_prices():
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    url = "https://api.nobitex.ir/market/stats"
+    response = requests.get(url, verify=False)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("status") == "ok":
+            stats = data.get("stats", {})
+            currency_bidPrice = {}
+            
+            for symbol, info in stats.items():
+                if symbol.endswith('-rls') and not info.get("isClosed", False):
+                    best_buy = float(info.get("bestBuy", 0))
+                    best_sell = float(info.get("bestSell", 0))
+                    if best_buy > 0:
+                        new_symbol = symbol.replace('-rls', '').upper()
+                        last_price = (best_buy+best_sell)/2
+                        currency_bidPrice[new_symbol] = last_price
+            return currency_bidPrice
+        else:
+            print("خطا در دریافت اطلاعات: وضعیت ناموفق")
+            return None
+    else:
+        print(f"خطا در اتصال به API: کد وضعیت {response.status_code}")
+        return None
 
-def y2():
-    cp = y1()
-    pd = {}
-    if cp:
-        for s in sorted(cp.keys()):
-            pd[s] = float(cp[s])
-    return pd
+def get_nobitex_prices():
+    currency_bidPrice = get_all_prices()
+    prices_dict = {}
+    
+    if currency_bidPrice:
+        for symbol in sorted(currency_bidPrice.keys()):
+            prices_dict[symbol] = float(currency_bidPrice[symbol])
+    
+    return prices_dict
 
 if __name__ == "__main__":
-    p = y2()
-    print(p)
+    prices = get_nobitex_prices()
+    print(prices)

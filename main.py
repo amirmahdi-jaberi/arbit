@@ -1,115 +1,224 @@
-from getpricenobitex import get_nobitex_prices as gnp
-from getpriceexcoino import get_excoino_prices as gep
-import telebot as tb
-from datetime import datetime as dt
-import time as tm
-import logging as lg
-import os as os
+from getpricenobitex import get_nobitex_prices
+from getpriceexcoino import get_excoino_prices
+from typing import Dict, List, Tuple
+import telebot
+from datetime import datetime
+import time
+import logging
+import os
 
-def sl():
-    if not os.path.exists('logs'): os.makedirs('logs')
-    lf = '%(asctime)s - %(levelname)s - %(message)s'
-    lg.basicConfig(
-        level=lg.INFO,
-        format=lf,
+# تنظیمات لاگینگ
+def setup_logging():
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    
+    log_format = '%(asctime)s - %(levelname)s - %(message)s'
+    logging.basicConfig(
+        level=logging.INFO,
+        format=log_format,
         handlers=[
-            lg.FileHandler(f'logs/arbitrage_{dt.now().strftime("%Y%m%d")}.log', encoding='utf-8'),
-            lg.StreamHandler()
+            logging.FileHandler(f'logs/arbitrage_{datetime.now().strftime("%Y%m%d")}.log', encoding='utf-8'),
+            logging.StreamHandler()
         ]
     )
-    return lg.getLogger(__name__)
+    return logging.getLogger(__name__)
 
-logger = sl()
-bt = "7873763430:AAHsAclSc_eVULYj6VxcfQuhiVsGWwpt8j8"
-bot = tb.TeleBot(bt)
+logger = setup_logging()
+BOT_TOKEN = "7873763430:AAHsAclSc_eVULYj6VxcfQuhiVsGWwpt8j8"
+bot = telebot.TeleBot(BOT_TOKEN)
 
-def gcp():
+def get_common_prices() -> Tuple[Dict[str, float], Dict[str, float]]:
     try:
-        logger.info("Getting Nobitex...")
-        np = gnp()
-        logger.info(f"Nobitex coins: {len(np)}")
-        logger.info("Getting Excoino...")
-        ep = gep()
-        logger.info(f"Excoino coins: {len(ep)}")
-        ck = set(np.keys()) & set(ep.keys())
-        if not ck: return {}, {}
-        logger.info(f"Common coins: {len(ck)}")
-        return {k: np[k] for k in ck}, {k: ep[k] for k in ck}
+        logger.info("دریافت قیمت‌ها از نوبیتکس...")
+        nob_pri = get_nobitex_prices()
+        logger.info(f"تعداد ارزهای دریافت شده از نوبیتکس: {len(nob_pri)}")
+        
+        logger.info("دریافت قیمت‌ها از اکسیونو...")
+        exc_pri = get_excoino_prices()
+        logger.info(f"تعداد ارزهای دریافت شده از اکسیونو: {len(exc_pri)}")
+        
+        common_keys = set(nob_pri.keys()) & set(exc_pri.keys())
+        if not common_keys:
+            logger.warning("هیچ ارز مشترکی بین دو صرافی یافت نشد")
+            return {}, {}
+
+        logger.info(f"تعداد ارزهای مشترک: {len(common_keys)}")
+        nobitex_common = {key: nob_pri[key] for key in common_keys}
+        excoino_common = {key: exc_pri[key] for key in common_keys}
+
+        return nobitex_common, excoino_common
+                
     except Exception as e:
-        logger.error(f"Error: {str(e)}", exc_info=True)
+        logger.error(f"خطا در دریافت قیمت‌ها: {str(e)}", exc_info=True)
         return {}, {}
 
-def cpd(np, ep):
-    diff = {}
-    for c in np.keys():
-        n = np[c]
-        e = ep[c]
-        dp = ((e - n) / n) * 100
-        if -20 <= dp <= 20:
-            diff[c] = {'N': n, 'E': e, 'D': dp}
-    logger.info(f"Arb ops: {len(diff)}")
-    return diff
+def calculate_price_differences(nobitex_prices: Dict[str, float], 
+                             excoino_prices: Dict[str, float]) -> Dict[str, Dict]:
+    differences = {}
+    for coin in nobitex_prices.keys():
+        nobitex_price = nobitex_prices[coin]
+        excoino_price = excoino_prices[coin]
+        
+        diff_percentage = ((excoino_price - nobitex_price) / nobitex_price) * 100
+        
+        if -20 <= diff_percentage <= 20:
+            differences[coin] = {
+                'نوبیتکس': nobitex_price,
+                'اکسیونو': excoino_price,
+                'اختلاف درصدی': diff_percentage
+            }
+    
+    logger.info(f"تعداد فرصت‌های آربیتراژ یافت شده: {len(differences)}")
+    return differences
 
-def gto(l=None):
-    logger.info("Getting top ops...")
-    np, ep = gcp()
-    diff = cpd(np, ep)
-    ops = []
-    for c, d in diff.items():
-        ad = abs(d['D'])
-        if 0 <= ad <= 5:
-            ops.append({'c': c, 'n': d['N'], 'e': d['E'], 'd': ad})
-    ops.sort(key=lambda x: x['d'], reverse=True)
-    return ops[:l] if l else ops
+def get_top_opportunities(limit: int = None) -> List[Dict]:
+    logger.info("دریافت فرصت‌های آربیتراژ با اختلاف 0 تا 5 درصد...")
+    nobitex_prices, excoino_prices = get_common_prices()
+    differences = calculate_price_differences(nobitex_prices, excoino_prices)
+    
+    opportunities = []
+    for coin, data in differences.items():
+        abs_diff = abs(data['اختلاف درصدی'])
+        if 0 <= abs_diff <= 5:
+            opportunities.append({
+                'currency': coin,
+                'nobitex_price': data['نوبیتکس'],
+                'excoino_price': data['اکسیونو'],
+                'difference': abs_diff
+            })
+    
+    opportunities.sort(key=lambda x: x['difference'], reverse=True)
+    
+    if limit:
+        opportunities = opportunities[:limit]
+    
+    logger.info(f"تعداد فرصت‌های نهایی: {len(opportunities)}")
+    return opportunities
 
-def so(ops, cs=25):
-    return [ops[i:i + cs] for i in range(0, len(ops), cs)]
+def split_opportunities(opportunities: List[Dict], chunk_size: int = 25) -> List[List[Dict]]:
+    return [opportunities[i:i + chunk_size] for i in range(0, len(opportunities), chunk_size)]
 
-def fom(ops, p, tp):
-    ct = dt.now().strftime("%Y-%m-%d %H:%M:%S")
-    msg = f"🔄 Arb (0-5%)\n⏰ {ct}\n📌 Part {p}/{tp}\n\n"
-    for o in ops:
-        msg += f"💰 {o['c']}\n🏦 N: {o['n']:,.0f}\n🏦 E: {o['e']:,.0f}\n📊 Diff: {o['d']:.2f}%\n{'─'*30}\n"
-    return msg
+def format_opportunity_message(opportunities: List[Dict], part: int, total_parts: int) -> str:
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = f"🔄 فرصت‌های آربیتراژ (0-5%)\n⏰ {current_time}\n"
+    message += f"📌 بخش {part} از {total_parts}\n\n"
+    
+    for opp in opportunities:
+        message += (
+            f"💰 {opp['currency']}\n"
+            f"🏦 نوبیتکس: {opp['nobitex_price']:,.0f}\n"
+            f"🏦 اکسکوینو: {opp['excoino_price']:,.0f}\n"
+            f"📊 اختلاف: {opp['difference']:.2f}%\n"
+            f"{'─' * 30}\n"
+        )
+    
+    return message
 
 @bot.message_handler(commands=['start'])
-def sw(m):
-    logger.info(f"User {m.from_user.id} sent start")
-    bot.reply_to(m, "Welcome! Use /help")
+def send_welcome(message):
+    logger.info(f"کاربر {message.from_user.id} دستور start را ارسال کرد")
+    welcome_text = """
+    به ربات آربیتراژ خوش آمدید! 🚀
+    
+    دستورات موجود:
+    /opportunities - نمایش فرصت‌های آربیتراژ
+    /help - راهنمای استفاده از ربات
+    """
+    bot.reply_to(message, welcome_text)
 
 @bot.message_handler(commands=['help'])
-def sh(m):
-    logger.info(f"User {m.from_user.id} sent help")
-    bot.reply_to(m, "Help: /opportunities")
+def send_help(message):
+    logger.info(f"کاربر {message.from_user.id} دستور help را ارسال کرد")
+    help_text = """
+    راهنمای استفاده از ربات:
+    
+    1. برای دریافت فرصت‌های آربیتراژ، دستور /opportunities را ارسال کنید
+    2. ربات فرصت‌ها را با اختلاف قیمت بین 0% تا 5% نمایش می‌دهد
+    3. نتایج به ترتیب از بیشترین به کمترین اختلاف مرتب می‌شوند
+    """
+    bot.reply_to(message, help_text)
 
 @bot.message_handler(commands=['opportunities'])
-def so(m):
-    logger.info(f"User {m.from_user.id} requested ops")
+def send_opportunities(message):
+    logger.info(f"کاربر {message.from_user.id} درخواست فرصت‌های آربیتراژ کرد")
     try:
-        lm = bot.reply_to(m, "⏳ Loading...")
-        ops = gto()
-        if not ops:
-            bot.edit_message_text("❌ No ops found.", m.chat.id, lm.message_id)
+        loading_msg = bot.reply_to(message, "⏳ در حال دریافت اطلاعات...")
+        opportunities = get_top_opportunities()
+        
+        if not opportunities:
+            logger.warning("هیچ فرصت آربیتراژی یافت نشد")
+            bot.edit_message_text(
+                "❌ در حال حاضر فرصت آربیتراژی با اختلاف 0-5% یافت نشد.",
+                chat_id=message.chat.id,
+                message_id=loading_msg.message_id
+            )
             return
-        chunks = so(ops, 25)
-        for i, c in enumerate(chunks, 1):
-            msg = fom(c, i, len(chunks))
+        
+        chunks = split_opportunities(opportunities, 25)
+        total_parts = len(chunks)
+        
+        for i, chunk in enumerate(chunks, 1):
+            message_text = format_opportunity_message(chunk, i, total_parts)
+            
             if i == 1:
-                bot.edit_message_text(msg, m.chat.id, lm.message_id, parse_mode='HTML')
+                bot.edit_message_text(
+                    message_text,
+                    chat_id=message.chat.id,
+                    message_id=loading_msg.message_id,
+                    parse_mode='HTML'
+                )
             else:
-                bot.send_message(m.chat.id, msg, parse_mode='HTML')
-            tm.sleep(0.5)
+                bot.send_message(
+                    message.chat.id,
+                    message_text,
+                    parse_mode='HTML'
+                )
+            
+            time.sleep(0.5)
+        
+        logger.info(f"فرصت‌های آربیتراژ در {total_parts} پیام ارسال شد")
+        
     except Exception as e:
-        logger.error(f"Error: {str(e)}", exc_info=True)
-        bot.edit_message_text(f"❌ Error: {str(e)}", m.chat.id, lm.message_id)
+        logger.error(f"خطا در ارسال فرصت‌های آربیتراژ: {str(e)}", exc_info=True)
+        error_message = f"❌ خطا در دریافت اطلاعات: {str(e)}"
+        try:
+            bot.edit_message_text(
+                error_message,
+                chat_id=message.chat.id,
+                message_id=loading_msg.message_id
+            )
+        except:
+            bot.reply_to(message, error_message)
 
-def rb():
-    logger.info("Starting bot...")
+def run_bot():
+    logger.info("شروع اجرای ربات...")
+    
     try:
         bot.remove_webhook()
-        bot.infinity_polling(timeout=90, long_polling_timeout=90)
+        updates = bot.get_updates(offset=-1)
+        if updates:
+            bot.last_update_id = updates[-1].update_id
+        
+        bot_info = bot.get_me()
+        logger.info(f"ربات با موفقیت متصل شد: @{bot_info.username}")
+        
+        while True:
+            try:
+                bot.infinity_polling(timeout=90, long_polling_timeout=90, allowed_updates=[])
+            except telebot.apihelper.ApiTelegramException as e:
+                if "Conflict: terminated by other getUpdates request" in str(e):
+                    logger.warning("تداخل در دریافت پیام‌ها، تلاش مجدد...")
+                    time.sleep(5)
+                    continue
+                else:
+                    raise e
+            except Exception as e:
+                logger.error(f"خطا در polling: {str(e)}", exc_info=True)
+                logger.info("تلاش مجدد در 5 ثانیه...")
+                time.sleep(5)
+                
     except Exception as e:
-        logger.critical(f"Critical: {str(e)}", exc_info=True)
+        logger.critical(f"خطای بحرانی در اجرای ربات: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
-    rb()
+    run_bot()
