@@ -1,50 +1,36 @@
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import urllib3
 
+def m1():
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    n1 = "https://api.nobitex.ir/market/stats"
+    o1 = requests.get(n1, verify=False)
+    if o1.status_code == 200:
+        p1 = o1.json()
+        if p1.get("status") == "ok":
+            q1 = p1.get("stats", {})
+            r1 = {}
+            for s1, t1 in q1.items():
+                if s1.endswith('-rls') and not t1.get("isClosed", False):
+                    u1 = float(t1.get("bestBuy", 0))
+                    v1 = float(t1.get("bestSell", 0))
+                    if u1 > 0:
+                        w1 = s1.replace('-rls', '').upper()
+                        x1 = (u1 + v1) / 2
+                        r1[w1] = x1
+            return r1
+    return None
 
-def get_all_prices():
-    url = "https://api.nobitex.ir/market/stats"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if data.get("status") == "ok":
-            stats = data.get("stats", {})
-            currency_bidPrice = {}  # قیمتی که می‌توانید بفروشید
-            
-            for symbol, info in stats.items():
-                # فقط جفت ارزهای ریال را در نظر بگیر
-                if symbol.endswith('-rls') and not info.get("isClosed", False):
-                    best_buy = float(info.get("bestBuy", 0))
-                    if best_buy > 0:
-                        # تبدیل فرمت نام از btc-rls به BTC/IRR
-                        new_symbol = symbol.replace('-rls', '').upper()
-                        currency_bidPrice[new_symbol] = best_buy
-            
-            return currency_bidPrice
-        else:
-            print("خطا در دریافت اطلاعات: وضعیت ناموفق")
-            return None
-    else:
-        print(f"خطا در اتصال به API: کد وضعیت {response.status_code}")
-        return None
+def y1():
+    z1 = m1()
+    a2 = {}
+    if z1:
+        for b2 in sorted(z1.keys()):
+            a2[b2] = float(z1[b2])
+    return a2
 
-def get_nobitex_prices():
-    """
-    دریافت قیمت‌های خرید ارزها از نوبیتکس
-    Returns:
-        dict: دیکشنری شامل نام ارزها و قیمت خرید آنها
-    """
-    currency_bidPrice = get_all_prices()
-    prices_dict = {}
-    
-    if currency_bidPrice:
-        for symbol in sorted(currency_bidPrice.keys()):
-            prices_dict[symbol] = float(currency_bidPrice[symbol])
-    
-    return prices_dict
-
-# مثال استفاده از تابع
 if __name__ == "__main__":
-    prices = get_nobitex_prices()
-    print(prices.keys())
+    c2 = y1()
+    print(c2)
