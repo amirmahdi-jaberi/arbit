@@ -41,8 +41,4 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-<<<<<<< HEAD
 CMD ["python", "main.py"]
-=======
-CMD ["python", "main.py"]
->>>>>>> 4e47bd900d3a9075d8f88f0cafb4ee96c9662b06
