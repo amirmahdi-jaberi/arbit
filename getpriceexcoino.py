@@ -22,7 +22,7 @@ def a1():
     b1.add_argument('--disable-blink-features=AutomationControlled')
     b1.add_experimental_option('excludeSwitches', ['enable-automation'])
     b1.add_experimental_option('useAutomationExtension', False)
-    c1 = "/usr/bin/chromedriver"
+    c1 = "/usr/local/bin/chromedriver"
     d1 = webdriver.Chrome(service=Service(c1), options=b1)
     d1.execute_cdp_cmd('Network.setUserAgentOverride', {
         "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
